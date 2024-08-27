@@ -3,14 +3,16 @@ from __future__ import annotations
 from typing import Any, Sequence, cast
 
 from vsexprtools import ExprVars, complexpr_available, norm_expr
+from vspyplugin import PyPluginCython
 from vsrgtools import BlurMatrix
 from vstools import (
-    ConvMode, CustomEnum, FuncExceptT, FunctionUtil, GenericVSFunction, KwargsT, PlanesT, core, scale_8bit, vs
+    ConvMode, CustomEnum, FuncExceptT, FunctionUtil, GenericVSFunction, KwargsT, PlanesT, core, depth, scale_8bit, vs
 )
 
 __all__ = [
     'fix_interlaced_fades',
-    'vinverse'
+    'vinverse',
+    'equilines'
 ]
 
 
@@ -127,3 +129,14 @@ def vinverse(
 
 
 fix_interlaced_fades = cast(FixInterlacedFades, FixInterlacedFades.Average)
+
+
+EquilinesFilter = PyPluginCython[None]
+
+
+def equilines(clip: vs.VideoNode, thr: int = 65535) -> vs.VideoNode:
+    @EquilinesFilter(depth(clip, 16), cython_kernel=('equilines', 'equilines_filter'))
+    def out(self: EquilinesFilter, src: EquilinesFilter.DT, dst: EquilinesFilter.DT) -> None:
+        self.kernel.equilines_filter(src, dst, thr)
+
+    return depth(out, clip)
